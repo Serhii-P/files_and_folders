@@ -5,15 +5,12 @@ import "./App.css";
 
 class App extends Component {
   render() {
-
     return (
       <div className="container">
-        <h1> Browse Files</h1>
+        <h1>Browse Files</h1>
 
         <div className="folders-wrapper">
-          {data.map((folders, index) => (
-            <FileBrowser data={folders} key={index} />
-          ))}
+          {data && <FileBrowser data={data} />}
         </div>
       </div>
     );

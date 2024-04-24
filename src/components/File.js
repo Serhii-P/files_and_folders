@@ -1,6 +1,6 @@
-import React, { Component } from "react";
+import React, { Component, memo } from "react";
 
-export default class File extends Component {
+class File extends Component {
   render() {
     const { name, mimeType } = this.props;
     return (
@@ -12,3 +12,5 @@ export default class File extends Component {
     );
   }
 }
+
+export default memo(File);

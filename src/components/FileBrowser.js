@@ -1,12 +1,26 @@
 import React, { Component } from "react";
 import Folder from "./Folder";
 import File from "./File";
+import { debounce } from "lodash";
+import { memoize } from "../helpers/memoize";
 
 class FileBrowser extends Component {
   state = {
     searchTerm: "",
-    expandedFolders: new Set(this.props.expandedFolders),
+    expandedFolders: new Set(),
+    visibilityCache: {},
+    searchValue: "",
   };
+
+  debouncedSearch = debounce((searchTerm) => {
+    this.setState({ searchTerm }, () => {
+      if (searchTerm) {
+        this.updateExpandedFoldersForSearch();
+      } else {
+        this.setState({ expandedFolders: new Set() });
+      }
+    });
+  }, 500);
 
   toggleFolder = (path) => {
     this.setState((prevState) => {
@@ -21,22 +35,26 @@ class FileBrowser extends Component {
   };
 
   handleSearch = (event) => {
-    this.setState({ searchTerm: event.target.value }, () => {
-      this.updateExpandedFoldersForSearch();
-    });
+    const searchTerm = event.target.value;
+    this.setState({ searchValue: searchTerm });
+    this.debouncedSearch(searchTerm);
   };
 
   updateExpandedFoldersForSearch = () => {
     const { searchTerm } = this.state;
+    const { data } = this.props;
+
     if (searchTerm) {
-      const pathsToExpand = this.getPathsToExpand(this.props.data, "");
+      const pathsToExpand = data.flatMap((entry) =>
+        this.getPathsToExpand(entry, "")
+      );
       this.setState({ expandedFolders: new Set(pathsToExpand) });
     } else {
-      this.setState({ expandedFolders: new Set(this.props.expandedFolders) });
+      this.setState({ expandedFolders: new Set() });
     }
   };
 
-  getPathsToExpand = (entry, path) => {
+  getPathsToExpand = memoize((entry, path) => {
     const fullPath = path ? `${path}/${entry.name}` : entry.name;
     let paths = [];
 
@@ -52,7 +70,7 @@ class FileBrowser extends Component {
     }
 
     return paths;
-  };
+  });
 
   isVisible = (entry) => {
     const { searchTerm } = this.state;
@@ -85,9 +103,7 @@ class FileBrowser extends Component {
     }
 
     if (entry.type === "FILE") {
-      return (
-        <File key={fullPath} name={entry.name} mimeType={entry.mimeType} />
-      );
+      return <File key={fullPath} name={entry.name} mimeType={entry.mime} />;
     }
 
     return (
@@ -103,21 +119,24 @@ class FileBrowser extends Component {
   };
   render() {
     const { data } = this.props;
-    const { searchTerm } = this.state;
+    const { searchValue } = this.state;
+
+    const renderedEntries = data.map((entry, index) =>
+      this.isVisible(entry) ? this.renderEntry(entry, "") : null
+    );
+
+    const allNull = renderedEntries.every((element) => element === null);
 
     return (
       <div className="browser-col">
         <input
           type="text"
           placeholder="Search..."
-          value={searchTerm}
+          value={searchValue}
           onChange={this.handleSearch}
           className="search-bar"
         />
-        <ul>
-          {(this.isVisible(data) && this.renderEntry(data, "")) ||
-            "No match found"}
-        </ul>
+        <ul>{!allNull ? renderedEntries : <li>No match found</li>}</ul>
       </div>
     );
   }
